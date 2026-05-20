@@ -65,7 +65,7 @@ public class HuskXLoader implements PluginLoader {
                     LOGGER.warn("[HuskX] Download failed. Falling back to cache.");
                 }
             } else {
-                LOGGER.info("[HuskX] Already up to date: " + latestVersion);
+                LOGGER.info("[HuskX] Already up to date: {}", latestVersion);
             }
         } else {
             LOGGER.warn("[HuskX] Could not reach GitHub. Using cached JAR if available.");
