@@ -21,7 +21,7 @@ dependencies {
 val writeHuskxProperties by tasks.registering(WriteProperties::class) {
     description = "Generates HuskX properties file."
     destinationFile = layout.buildDirectory.file("generated-resources/huskx.properties")
-    property("github.repo", "doka1203/huskx-papermc")
+    property("github.repo", "DOKA1203/HuskX")
     property("github.asset-name", "huskx-papermc.jar")
     property("main-class", "kr.doka.lab.huskx.HuskXPlugin")
     property("kotlin.version", libs.versions.kotlin.get())

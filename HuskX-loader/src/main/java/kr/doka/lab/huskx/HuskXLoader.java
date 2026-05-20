@@ -20,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.Properties;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -35,18 +36,19 @@ public class HuskXLoader implements PluginLoader {
         loadProperties();
 
         MavenLibraryResolver resolver = new MavenLibraryResolver();
-        resolver.addRepository(new RemoteRepository.Builder("central", "default", "https://repo1.maven.org/maven2/").build());
+        resolver.addRepository(new RemoteRepository.Builder("central", "default", MavenLibraryResolver.MAVEN_CENTRAL_DEFAULT_MIRROR).build());
         resolver.addDependency(new Dependency(new DefaultArtifact("org.jetbrains.kotlin:kotlin-stdlib-jdk8:" + kotlinVersion), null));
         classpathBuilder.addLibrary(resolver);
 
         Path cacheDir = Path.of("plugins", "HuskX", "cache");
+
         Path cachedJar = cacheDir.resolve(assetName);
         Path versionFile = cacheDir.resolve("version.txt");
 
         try {
             Files.createDirectories(cacheDir);
         } catch (IOException e) {
-            LOGGER.info("[HuskX] Failed to create cache directory: {}", e.getMessage());
+            LOGGER.info("Failed to create cache directory: {}", e.getMessage());
             return;
         }
 
@@ -56,25 +58,25 @@ public class HuskXLoader implements PluginLoader {
             String cachedVersion = readCachedVersion(versionFile);
 
             if (!latestVersion.equals(cachedVersion)) {
-                LOGGER.info("[HuskX] New version found: " + latestVersion + ". Downloading...");
+                LOGGER.info("New version found: {}. Downloading...", latestVersion);
                 boolean success = downloadJar(latestVersion, cachedJar);
                 if (success) {
                     writeCachedVersion(versionFile, latestVersion);
-                    LOGGER.info("[HuskX] Download complete.");
+                    LOGGER.info("Download complete.");
                 } else {
-                    LOGGER.warn("[HuskX] Download failed. Falling back to cache.");
+                    LOGGER.warn("Download failed. Falling back to cache.");
                 }
             } else {
-                LOGGER.info("[HuskX] Already up to date: {}", latestVersion);
+                LOGGER.info("Already up to date: {}", latestVersion);
             }
         } else {
-            LOGGER.warn("[HuskX] Could not reach GitHub. Using cached JAR if available.");
+            LOGGER.warn("Could not reach GitHub. Using cached JAR if available.");
         }
 
         if (Files.exists(cachedJar)) {
             classpathBuilder.addLibrary(new JarLibrary(cachedJar));
         } else {
-            LOGGER.info("[HuskX] No cached JAR found. Plugin cannot load.");
+            LOGGER.info("No cached JAR found. Plugin cannot load.");
         }
     }
 
@@ -86,24 +88,33 @@ public class HuskXLoader implements PluginLoader {
             if (in == null) throw new IOException("huskx.properties not found");
             props.load(in);
         } catch (IOException e) {
-            LOGGER.info("[HuskX] Failed to load huskx.properties: {}", e.getMessage());
+            LOGGER.info("Failed to load huskx.properties: {}", e.getMessage());
         }
         githubRepo    = props.getProperty("github.repo", "");
         assetName     = props.getProperty("github.asset-name", "huskx-paper.jar");
         kotlinVersion = props.getProperty("kotlin.version", "");
     }
 
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+
     private String fetchLatestVersion() {
         try {
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.github.com/repos/" + githubRepo + "/releases/latest"))
                     .header("Accept", "application/vnd.github+json")
+                    .timeout(Duration.ofSeconds(10))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            String body = response.body();
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                LOGGER.warn("GitHub API returned HTTP {}", response.statusCode());
+                return null;
+            }
 
+            String body = response.body();
             // 간단한 tag_name 파싱 (JSON 라이브러리 없이)
             String key = "\"tag_name\":\"";
             int start = body.indexOf(key);
@@ -113,7 +124,7 @@ public class HuskXLoader implements PluginLoader {
             return body.substring(start, end);
 
         } catch (Exception e) {
-            LOGGER.warn("[HuskX] GitHub API request failed: {}", e.getMessage());
+            LOGGER.warn("GitHub API request failed: {}", e.getMessage());
             return null;
         }
     }
@@ -121,16 +132,16 @@ public class HuskXLoader implements PluginLoader {
     private boolean downloadJar(String version, Path destination) {
         String url = "https://github.com/" + githubRepo + "/releases/download/" + version + "/" + assetName;
         try {
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(30))
                     .build();
 
-            HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<InputStream> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofInputStream());
             Files.copy(response.body(), destination, StandardCopyOption.REPLACE_EXISTING);
             return true;
         } catch (Exception e) {
-            LOGGER.warn("[HuskX] Failed to download JAR: {}", e.getMessage());
+            LOGGER.warn("Failed to download JAR: {}", e.getMessage());
             return false;
         }
     }
@@ -141,7 +152,7 @@ public class HuskXLoader implements PluginLoader {
                 return Files.readString(versionFile).strip();
             }
         } catch (IOException e) {
-            LOGGER.warn("[HuskX] Failed to read version file: {}", e.getMessage());
+            LOGGER.warn("Failed to read version file: {}", e.getMessage());
         }
         return null;
     }
@@ -150,7 +161,7 @@ public class HuskXLoader implements PluginLoader {
         try {
             Files.writeString(versionFile, version);
         } catch (IOException e) {
-            LOGGER.warn("[HuskX] Failed to write version file: {}", e.getMessage());
+            LOGGER.warn("Failed to write version file: {}", e.getMessage());
         }
     }
 }
