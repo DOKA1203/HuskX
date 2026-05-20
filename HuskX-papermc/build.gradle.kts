@@ -21,6 +21,10 @@ kotlin {
     jvmToolchain(25)
 }
 
+tasks.jar {
+    archiveFileName.set("huskx-papermc.jar")
+}
+
 tasks.test {
     useJUnitPlatform()
 }

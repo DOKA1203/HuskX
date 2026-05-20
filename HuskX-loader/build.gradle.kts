@@ -18,6 +18,16 @@ dependencies {
     paperweight.paperDevBundle(libs.versions.paper.api.get())
 }
 
+tasks.jar {
+    archiveFileName.set("huskx-loader.jar")
+}
+
+tasks.processResources {
+    filesMatching("huskx.properties") {
+        expand("kotlinVersion" to libs.versions.kotlin.get())
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
 }
