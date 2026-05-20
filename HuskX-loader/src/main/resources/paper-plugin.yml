@@ -1,0 +1,14 @@
+name: HuskX
+description: $description
+prefix: HuskX
+version: '${version}'
+
+main: kr.doka.lab.huskx.HuskXPlugin
+# bootstrapper: kr.doka.lab.nexa.NexaNPCBootstrap
+loader: kr.doka.lab.huskx.HuskXPluginLoader
+
+api-version: '26.1.2'
+load: POSTWORLD
+
+authors: [ doka1203 ]
+website: doka.kr
