@@ -5,7 +5,7 @@ version: '${version}'
 
 main: kr.doka.lab.huskx.HuskXPlugin
 # bootstrapper: kr.doka.lab.nexa.NexaNPCBootstrap
-loader: kr.doka.lab.huskx.HuskXPluginLoader
+loader: kr.doka.lab.huskx.HuskXLoader
 
 api-version: '26.1.2'
 load: POSTWORLD
